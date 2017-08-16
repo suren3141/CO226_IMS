@@ -50,5 +50,40 @@ print (demand)
 
 
 
-plt.plot(x, y)
-plt.show()
+#plt.plot(x, y)
+#plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+import MySQLdb
+
+db = MySQLdb.connect(host="localhost",    # your host, usually localhost
+                     user="root",         # your username
+                                          # your password
+                     db="e14379lab04")    # name of the data base
+
+# you must create a Cursor object. It will let
+#  you execute all the queries you need
+cur = db.cursor()
+
+# Use all the SQL you like
+#cur.execute("CREATE TABLE demand(d INT, quantity INT);")
+for i in range(len(x)):
+	cur.execute("INSERT INTO demand VALUES ({},{})".format(x[i],y[i]))
+
+cur.execute("SELECT * FROM demand")
+
+# print all the first cell of all the rows
+for row in cur.fetchall():
+    print(row)
+
+db.close()
