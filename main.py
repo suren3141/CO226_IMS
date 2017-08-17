@@ -49,21 +49,6 @@ print (demand)
 
 
 
-
-#plt.plot(x, y)
-#plt.show()
-
-
-
-
-
-
-
-
-
-
-
-
 import MySQLdb
 
 db = MySQLdb.connect(host="localhost",    # your host, usually localhost
