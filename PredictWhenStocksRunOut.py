@@ -1,5 +1,12 @@
 #gihanchanaka@gmail.com
+import PoissonDristribution
 
-#This is to ake the prediction algo
+def probabilityThatStocksWillRunOutBy(days,meanSalesPerDay):
+	#to implement
 
-#To push to suren
+	return 0
+def noOfDaysStocksWillLastWithConfidence(confidence,meanSalesPerDay):
+
+	#to implement
+
+	return 0
