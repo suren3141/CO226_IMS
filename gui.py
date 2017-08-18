@@ -3,10 +3,11 @@ import tkinter.font as tkFont
 import tkinter.ttk as ttk
 import pymysql as MySQLdb
 import numpy as np
+from matplot import Plotter
 
 #MAIN FUNCTIONS------------------------------------------------------------------------------------------------
 def EOQ(d, h, o):
-    return np.sqrt(2*o*d/float(h))
+    return np.sqrt(2*o*d/h)
 
 def ROL(lead , SS, rate):
     return lead*rate + SS
@@ -19,8 +20,8 @@ def on_bu_insert(ue_day, ue_quantity):
     try:
         u_day = int(ue_day.get())
         u_quantity = int(ue_quantity.get())
-        print(u_day)
-        print(type(u_quantity))
+        #print(u_day)
+        #print(type(u_quantity))
         usage_lb.insert((u_day, u_quantity))
     except:
         on_error('Enter valid values')
@@ -35,8 +36,8 @@ def on_bu_update():
 
 def on_bu_select():
     cur_item = usage_lb.tree.focus()
-    print (cur_item)
-    print (usage_lb.tree.item(cur_item)['values'])
+    #print (cur_item)
+    #print (usage_lb.tree.item(cur_item)['values'])
 
 def on_bu_delete():
     cur_item = usage_lb.tree.focus()
@@ -52,13 +53,30 @@ def on_analyze():
     on_save()
     nb.select(p5)
 
-def plot_demand():
+def plot_demand(usage_head, root):
+    x_name = usage_head[0]
+    y_name = usage_head[1]
+    x, y = get_tree_val(usage_lb.tree, x_name, y_name)
     print('demand')
+    on_plot(root, x, y)
     return
 
 def plot_usage():
+
     print('usage')
     return
+
+
+def get_tree_val(tv, x_name, y_name):
+    children = tv.get_children()
+    x = [int(tv.set(child,x_name)) for child in children]
+    y = [int(tv.set(child,y_name)) for child in children]
+#    print(x, y)
+    return x, y
+
+def on_plot(root, x, y):
+    W = Plotter(root, x, y)
+
 
 
 #GUI-------------------------------------------------------------------------------------------------------
@@ -98,6 +116,7 @@ class MultiColumnListbox(object):
                 self.tree.column(header[ix], width=col_w)'''
 
     def sort_col(self, tree, col, descending):
+#        print(col)
         data = [(tree.set(child, col), child) for child in tree.get_children('')]
         #print(data)
         if data[0][0].isdigit():
@@ -109,10 +128,10 @@ class MultiColumnListbox(object):
 
 
 def on_error(message):
-        e = Toplevel(root)
-        l = Label(e, text = message).pack()
-#        b = Button(e, text = "OK", command = e.quit())
-#        b.pack(side = BOTTOM, padx = 2, pady = 2)
+    e = Toplevel(root)
+    l = Label(e, text = message).pack()
+    b = Button(e, text = "OK", command = e.destroy)
+    b.pack(side = BOTTOM, padx = 2, pady = 2)
 
 #VARIABLES-------------------------------------------------------------------------------------
 demand = 40000
@@ -290,22 +309,24 @@ analysis_lb = MultiColumnListbox(analysis_tf, analysis_head, [tuple(analysis_hea
 
 
 #BF
-ae1 = Entry(analysis_bf)
-ae2 = Entry(analysis_bf)
-ae3 = Entry(analysis_bf)
 ae4 = Entry(analysis_bf)
 al1 = Label(analysis_bf, text = 'Annual Demand')
 al2 = Label(analysis_bf, text = 'Safety Stock')
 al3 = Label(analysis_bf, text = 'Holding Cost')
 al4 = Label(analysis_bf, text = '')
 al5 = Label(analysis_bf, text = '')
+
+ae1 = Entry(analysis_bf)
+ae2 = Entry(analysis_bf)
+ae3 = Entry(analysis_bf)
 ae1.grid(row = 0)
 ae2.grid(row = 0, column = 1)
 ae3.grid(row = 0, column = 2)
+
 ab1 = Button(analysis_bf, text = 'filter')
 ab1.grid(row = 0,column = 3)
 
-ab2 = Button(analysis_bf, text = 'demand analysis', command = plot_demand)
+ab2 = Button(analysis_bf, text = 'demand analysis', command = lambda : plot_demand(usage_head, root))
 ab2.grid(row = 1)
 
 ab3 = Button(analysis_bf, text = 'usage analysis', command = plot_usage)
