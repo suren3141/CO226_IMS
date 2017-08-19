@@ -6,6 +6,12 @@ def poisson(mean,x):
     return math.exp(-1 * mean) * pow(mean, x) / math.factorial(x)
 
 
+def cumilativeProbability(mean,x):
+	probability=0
+	for i in range(x):
+		probability= probability + poisson(mean,i)
+	return probability
+
 def getNumberInPoissonDistribution(mean):
     cumilProbRand = random.random()
     cumilProbPoisson = 0
