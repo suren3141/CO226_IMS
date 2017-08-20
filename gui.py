@@ -138,16 +138,24 @@ def analyze_stock(usage_head):
 #SQL FUNCTIONS------------------------------------------------------------------------------------------------
 
 def insert_to_db(table, values):
-    TEMP=''
+
     if table=='seller':
         TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['OC','UP','LT'])
+        cur.execute(
+            "INSERT INTO {} VALUES({}) ON DUPLICATE KEY UPDATE {}".format(table, ','.join(str(i) for i in values),
+                                                                          TEMP))
     if table == 'offer':
         TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['Q','D'])
+        print(values,TEMP)
+        cur.execute(
+            "INSERT INTO {} VALUES({}) ON DUPLICATE KEY UPDATE {}".format(table, ','.join(str(i) for i in values),
+                                                                          TEMP))
+
     if table == 'demand':
-        TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['D','Q'])
+        cur.execute("INSERT INTO {} VALUES({})".format(table, ','.join(str(i) for i in values)))
     if table == 'purchase':
-        TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['D','Q'])
-    cur.execute("INSERT INTO {} VALUES({}) ON DUPLICATE KEY UPDATE {}".format(table, ','.join(str(i) for i in values),TEMP))
+        cur.execute("INSERT INTO {} VALUES({})".format(table, ','.join(str(i) for i in values)))
+
     db.commit()
 
 def delete_from_db_using_id(table, id):
@@ -196,6 +204,7 @@ def on_b_update(mlb, labels, flag):
     else:
         val = mlb.tree.item(cur_item)['values']
         win = Update(mlb, labels, root, cur_item, val, flag)
+        # sql is updated when ok pressed. Goto update class to see it
 
 def on_b_delete(mlb):
     cur_item = mlb.tree.focus()
@@ -227,8 +236,9 @@ def on_seller_insert(entries):
         v2 = int(entries[1].get())
         v3 = float(entries[2].get())
         v4 = int(entries[3].get())
+        insert_to_db('seller', [v1, v2, v3, v4])
         seller_lb.insert((v1, v2, v3, v4))
-        insert_to_db('seller',[v1,v2,v3,v4])
+
     except:
         on_error('Enter valid values')
         return -1
@@ -241,9 +251,11 @@ def on_offer_insert(entries):
         v1 = int(entries[0].get())
         v2 = int(entries[1].get())
         v3 = float(entries[2].get())
+        insert_to_db('offer', [v1, v2, v3])
         offer_lb.insert((v1, v2, v3))
-        insert_to_db('offer',[v1,v2,v3])
-    except:
+
+    except Exception  as e:
+        print(e)
         on_error('Enter valid values')
         return -1
     return 0
@@ -391,6 +403,7 @@ class Update(object):
     def __init__(self, mlb, labels, root, cur_item, val, ind):
         self.win = Toplevel(root)
         self.setup_win(mlb, labels, cur_item, val, ind)
+        self.previous_val = val
 
     def setup_win(self, mlb, lab, cur_item, val, ind):
         #print(val)
@@ -428,6 +441,24 @@ class Update(object):
         self.win.destroy()
 
     def on_ok(self, entries, mlb, cur_item, ind):
+        val=[]
+        for i in range(len(entries)):
+            val.append((entries[i].get()))
+        if mlb == usage_lb:
+            cur.execute("delete from DEMAND WHERE D={} AND Q={} LIMIT 1".format(
+                                                                                   self.previous_val[0],
+                                                                                   self.previous_val[1]))
+        elif mlb == purchase_lb:
+            cur.execute("DELETE FROM purchase WHERE D={} AND Q={} LIMIT 1".format(
+                                                                                   self.previous_val[0],
+                                                                                   self.previous_val[1]))
+        elif mlb == offer_lb:
+            print(val)
+            insert_to_db('offer', val)
+        elif mlb == seller_lb:
+            print(val)
+            insert_to_db('seller',val)
+
         reply = on_b_insert(entries, mlb, ind)
         if reply == 0:
             mlb.tree.delete(cur_item)
