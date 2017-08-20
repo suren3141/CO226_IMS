@@ -2,7 +2,7 @@
 #run mysql and create database called co226
 
 import numpy as np
-import pymysql as MySQLdb
+import MySQLdb
 import math
 import random
 import matplotlib.pyplot as plt
