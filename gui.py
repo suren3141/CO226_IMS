@@ -21,18 +21,26 @@ q_choice = 0
 d_choice = 0
 
 
-#MAIN FUNCTIONS------------------------------------------------------------------------------------------------
+# MAIN FUNCTIONS-----------------------------------------------------------------------------------------------
 def EOQ(d, h, o):
+    # economic order quantity is the optimum quantity of goods to be purchased at one time in order to
+    # minimize the annual total costs of ordering and carrying or holding items in inventory
     return math.sqrt(2*o*d/h)
 
+
 def ROL(lead , SS, rate):
+    # rate on line (ROL) A percentage derived by dividing reinsurance premium by reinsurance limit
     return lead*rate + SS
 
+
 def ROD(x1, y1, rol, rate):
+    # Ride Or Die
     return x1 + (y1-rol)/rate
+
 
 def cost(up, discount, holding_cost, order_cost, quantity, demand):
     return up*(1-discount)*demand + demand*order_cost / quantity + (holding_cost*quantity) / (2)
+
 
 def u_rate(d):
     x_name = usage_head[0]
@@ -53,8 +61,10 @@ def find_demand(days):
     e_demand.delete(0, END)
     e_demand.insert(0, str(math.ceil(365*(sum(y[-l:])/l))))
 
+
 def line_fit(x, x1, y1, m):
     return -m*(x-x1) + y1
+
 
 def analyze_seller():
     cur.execute("SELECT * FROM SELLER")
@@ -167,6 +177,7 @@ def on_b_delete(mlb):
 
 
 def on_seller_insert(entries):
+    # TODO: is there any possibility to ignore entering certain fields?
     try:
         v1 = int(entries[0].get())
         v2 = int(entries[1].get())
@@ -180,6 +191,7 @@ def on_seller_insert(entries):
 
 
 def on_offer_insert(entries):
+    # TODO: is there any possibility to ignore entering certain fields?
     try:
         v1 = int(entries[0].get())
         v2 = int(entries[1].get())
