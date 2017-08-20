@@ -20,7 +20,9 @@ s_choice = 0
 lt_choice = 0
 q_choice = 0
 uc_choice = 0
-
+current_stock = 0
+rod = 0
+rol = 0
 
 #MAIN FUNCTIONS------------------------------------------------------------------------------------------------
 def EOQ(d, h, o):
@@ -43,9 +45,7 @@ def cost(up, discount, holding_cost, order_cost, quantity, demand):
 def u_rate(d):
     #usage rate taken as an average of past d days
     #Could use better model
-    x_name = usage_head[0]
-    y_name = usage_head[1]
-    x, y = get_tree_val(usage_lb.tree, x_name, y_name)
+    x, y = get_tree_val(usage_lb.tree, 'Day', 'Quantity')
     days = max(x)
     usage = [0] * (days+1)
     for i in range(len(x)):
@@ -95,9 +95,9 @@ def analyze_seller():
             tc = cost(seller[ind][1], d, holding_cost, seller[ind][0], q, demand)
             seller_analysis.append((ind, seller[ind][0], seller[ind][1], seller[ind][2], q, d, int(tc), "{0:.2f}".format(tc/demand)))
 
-    print(holding_cost)
-    for row in seller_analysis:
-        print(row)
+    #print(holding_cost)
+    #for row in seller_analysis:
+    #    print(row)
 
     for i in range(n):
         if eoq_seller[i]:
@@ -109,12 +109,10 @@ def analyze_seller():
     #return seller_analysis
 
 
-def analyze_stock(usage_head):
+def analyze_stock():
     #Find stock levels at the end of each day
-    x_name = usage_head[0]
-    y_name = usage_head[1]
-    x1, y1 = get_tree_val(usage_lb.tree, x_name, y_name)
-    x2, y2 = get_tree_val(purchase_lb.tree, x_name, y_name)
+    x1, y1 = get_tree_val(usage_lb.tree, 'Day', 'Quantity')
+    x2, y2 = get_tree_val(purchase_lb.tree, 'Day', 'Quantity')
     l = max(max(x1), max(x2))
     x = range(1,l+1)
     y = [0]*(l+1)
@@ -130,7 +128,12 @@ def analyze_stock(usage_head):
 
     global stock_analysis
     stock_analysis = [(i, stock_val[i]) for i in range(l+1)]
-    return stock_val
+    update_global()
+    global current_stock
+    current_stock= stock_val[-1]
+    if current_stock < rol:
+        on_error("Attenion! Order now to avoid Stock out")
+    #return stock_val
 
 #SQL FUNCTIONS------------------------------------------------------------------------------------------------
 
@@ -179,7 +182,10 @@ def on_b_insert(entries, mlb, flag):
             elif mlb==purchase_lb:
                 insert_to_db('purchase',val)
             mlb.insert(tuple(val))
+            analyze_stock()
+            refresh(stock_lb, stock_analysis)
         except:
+            print('1')
             on_error('Enter valid values')
             rep = -1
 
@@ -218,7 +224,7 @@ def on_b_delete(mlb, root, flag = 0):
 
             if flag == 1:
                 id = seller_lb.tree.item(cur_item)['values'][0]
-                cur.execute('delete from seller where id = {}'.format(id))
+                #cur.execute('delete from seller where id = {}'.format(id))
                 cur.execute('select * from offer')
                 temp = cur.fetchall()
                 #print(temp)
@@ -228,6 +234,11 @@ def on_b_delete(mlb, root, flag = 0):
                     offer_lb.insert(row)
 
             mlb.tree.delete(cur_item)
+            analyze_stock()
+            refresh(stock_lb, stock_analysis)
+            analyze_seller()
+            refresh(seller_lb, seller_analysis)
+
             #print('1')
     return
 
@@ -241,7 +252,10 @@ def on_seller_insert(entries):
         v4 = int(entries[3].get())
         insert_to_db('seller',[v1,v2,v3,v4])
         seller_lb.insert((v1, v2, v3, v4))
+        analyze_seller()
+        refresh(seller_lb, seller_analysis)
     except:
+        print('2')
         on_error('Enter valid values')
         return -1
     return 0
@@ -255,7 +269,10 @@ def on_offer_insert(entries):
         v3 = float(entries[2].get())
         insert_to_db('offer',[v1,v2,v3])
         offer_lb.insert((v1, v2, v3))
+        analyze_seller()
+        refresh(seller_lb, seller_analysis)
     except:
+        print('3')
         on_error('Enter valid values')
         return -1
     return 0
@@ -267,11 +284,13 @@ def find_demand(days):
 
 def refresh(mlb, arr):
     #Refresh a list box with values in arr
-    children = mlb.tree.get_children()
-    for child in children:
-        analysis_lb.tree.delete(child)
+    for child in mlb.tree.get_children():
+        try:
+            mlb.tree.delete(child)
+        except:
+            print (child)
     for row in arr:
-        analysis_lb.insert(row)
+        mlb.insert(row)
 
 
 def on_save():
@@ -304,10 +323,18 @@ def on_save():
 #    on_save()
 #    nb.select(p5)
 
-def plot_demand(usage_head, root):
-    x_name = usage_head[0]
-    y_name = usage_head[1]
-    x, y = get_tree_val(usage_lb.tree, x_name, y_name)
+def update_global():
+    u_rate(60)
+    x1 = max(stock_val)
+    y1 = stock_val[-1]
+    global rol
+    rol = ROL(lt_choice, safety_stock, rate)
+    global rod
+    rod = ROD(x1, y1, rol, rate)
+
+
+def plot_demand(root):
+    x, y = get_tree_val(usage_lb.tree, 'Day', 'Quantity')
     days = max(x)
     usage = [0] * (days+1)
     for i in range(len(x)):
@@ -486,49 +513,6 @@ class Confirm:
 
 
 
-'''
-    def __init__(self, message, root):
-        self.reply = 0
-        self.win = Toplevel(root)
-        self.setup_win(message)
-
-    def setup_win(self, message):
-        f = Frame(self.win)
-        f.pack()
-        l = Label(f, text = message)
-        l.pack()
-        b1 = Button(f, text = "yes", command = lambda: self.on_yes)
-        b1.pack()
-        b2 = Button(f, text = "no", command = lambda: self.win.destroy)
-        b2.pack()
-
-    def on_yes(self):
-        self.reply = 1
-        self.win.destroy()
-'''
-
-'''
-    def __init__(self, message, root):
-        self.rep = 0
-        self.win = Toplevel(root)
-        self.setup_win(message)
-
-    def setup_win(self, message):
-        l = Label(self.win, text = message)
-        l.grid(row = 1, column = 1, columnspan = 3)
-        b1 = Button(self.win, text = "yes", command = lambda: self.on_yes)
-        b1.grid(row = 2, column = 1)
-        b2 = Button(self.win, text = "no", command = lambda: self.win.destroy)
-        b2.grid(row = 2, column = 3)
-        for i in range(4):
-            self.win.rowconfigure(i, weight = 1)
-        for j in range(5):
-            self.win.columnconfigure(i, weight = 1)
-
-    def on_yes(self):
-        self.rep = 1
-        self.win.destroy()
-'''
 
 class Update(object):
 
@@ -848,7 +832,6 @@ for i in range(4):
 
 #STOCK ANALYSIS--------------------------------------------------------------------------------------------
 u_rate(60)
-
 stock_head = ['Day', 'Stock']
 
 stock_lf = ttk.Frame(p6)
@@ -862,7 +845,7 @@ p6.columnconfigure(0, weight = 8)
 p6.columnconfigure(1, weight = 1)
 
 #LF
-analyze_stock(usage_head)
+analyze_stock()
 stock_lb = MultiColumnListbox(stock_lf, stock_head, stock_analysis)
 
 #RF
@@ -872,7 +855,7 @@ st_l = [Label(stock_rf, text = x) for x in st_l]
 st_e = [Entry(stock_rf) for i in st_l]
 
 bst_stock = Button(stock_rf, text = "Stock analysis", command = lambda : plot_stock(root))
-bst_demand = Button(stock_rf, text = "Demand analysis", command = lambda: plot_demand(usage_head, root))
+bst_demand = Button(stock_rf, text = "Demand analysis", command = lambda: plot_demand(root))
 
 st_l[0].grid(row = 1, column = 1)
 st_e[0].grid(row = 1, column = 2, columnspan = 2)
