@@ -478,7 +478,7 @@ class MultiColumnListbox(object):
 
 def on_error(message):
     e = Toplevel(root)
-    l = Label(e, text = message).pack()
+    l = Label(e, text = message, font=("Arial", 14)).pack()
     b = Button(e, text = "OK", command = e.destroy)
     b.pack(side = BOTTOM, padx = 2, pady = 2)
 
