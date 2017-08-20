@@ -12,6 +12,13 @@ holding_cost = 30
 safety_stock = 400
 max_lead_time = -1
 max_eff_unit_price = -1
+rate = 0
+seller_analysis = []
+stock_val = []
+stock_analysis = []
+lt_choice = 0
+q_choice = 0
+d_choice = 0
 
 
 #MAIN FUNCTIONS------------------------------------------------------------------------------------------------
@@ -21,19 +28,33 @@ def EOQ(d, h, o):
 def ROL(lead , SS, rate):
     return lead*rate + SS
 
+def ROD(x1, y1, rol, rate):
+    return x1 + (y1-rol)/rate
+
 def cost(up, discount, holding_cost, order_cost, quantity, demand):
     return up*(1-discount)*demand + demand*order_cost / quantity + (holding_cost*quantity) / (2)
 
-def u_rate(tv):
-    children = tv.get_children()
-    #data = (tree.set(child, col)
-    return
+def u_rate(d):
+    x_name = usage_head[0]
+    y_name = usage_head[1]
+    x, y = get_tree_val(usage_lb.tree, x_name, y_name)
+    days = max(x)
+    usage = [0] * (days+1)
+    for i in range(len(x)):
+        usage[x[i]] += y[i]
+
+    global rate
+    rate = sum(usage[-d:])/d
+
 
 def find_demand(days):
     x, y = get_tree_val(usage_lb.tree, usage_head[0], usage_head[1])
     l = max(len(y), days)
     e_demand.delete(0, END)
     e_demand.insert(0, str(math.ceil(365*(sum(y[-l:])/l))))
+
+def line_fit(x, x1, y1, m):
+    return -m*(x-x1) + y1
 
 def analyze_seller():
     cur.execute("SELECT * FROM SELLER")
@@ -58,13 +79,13 @@ def analyze_seller():
             d_seller[ind] = max(d, d_seller[ind])
         else:
             tc = cost(seller[ind][1], d, holding_cost, seller[ind][0], q, demand)
-            seller_analysis.append((ind, seller[ind][0], seller[ind][1], seller[ind][2], q, d, tc))
+            seller_analysis.append((ind, seller[ind][0], seller[ind][1], seller[ind][2], q, d, int(tc), "{0:.2f}".format(tc/demand)))
 
     for i in range(n):
         if eoq_seller[i]:
             oc, up, lt = seller[i]
-            uc = cost(up, d_seller[i], holding_cost, oc, eoq_seller[i], demand)
-            seller_analysis.append((i, oc, up, lt, eoq_seller[i], d_seller[i], uc))
+            tc = cost(up, d_seller[i], holding_cost, oc, eoq_seller[i], demand)
+            seller_analysis.append((i, oc, up, lt, eoq_seller[i], d_seller[i], int(tc), "{0:.2f}".format(tc/demand)))
 
     '''for i in range(len(seller_data)):
         ind, oc, up, lt, q, d = seller_data[i]
@@ -80,6 +101,29 @@ def analyze_seller():
     print(seller)'''
 
     return seller_analysis
+
+
+def analyze_stock(usage_head):
+    x_name = usage_head[0]
+    y_name = usage_head[1]
+    x1, y1 = get_tree_val(usage_lb.tree, x_name, y_name)
+    x2, y2 = get_tree_val(purchase_lb.tree, x_name, y_name)
+    l = max(max(x1), max(x2))
+    x = range(1,l+1)
+    y = [0]*(l+1)
+    global stock_val
+    stock_val = [0] * (l+1)
+    for i in range(len(x2)):
+        stock_val[x2[i]] += y2[i]
+    for i in range(len(x1)):
+        stock_val[x1[i]] -= y1[i]
+    #print(stock_val)
+    for i in range(1, l+1):
+        stock_val[i] += (stock_val[i] + stock_val[i-1])
+
+    global stock_analysis
+    stock_analysis = [(i, stock_val[i]) for i in range(l+1)]
+    return stock_val
 
 #SQL FUNCTIONS------------------------------------------------------------------------------------------------
 
@@ -180,29 +224,34 @@ def plot_demand(usage_head, root):
     x_name = usage_head[0]
     y_name = usage_head[1]
     x, y = get_tree_val(usage_lb.tree, x_name, y_name)
-    on_plot(root, x, y, 'plot')
+    days = max(x)
+    usage = [0] * (days+1)
+    for i in range(len(x)):
+        usage[x[i]] += y[i]
+    on_plot(root, range(days), usage[1:], 'plot')
 
-def plot_stock(usage_head, root):
-    x_name = usage_head[0]
-    y_name = usage_head[1]
-    x1, y1 = get_tree_val(usage_lb.tree, x_name, y_name)
-    x2, y2 = get_tree_val(purchase_lb.tree, x_name, y_name)
-    l = max(max(x1), max(x2))
-    x = range(1,l+1)
-    y = [0]*(l+1)
-    stock_val = [0] * (l+1)
-    for i in range(len(x2)):
-        stock_val[x2[i]] += y2[i]
-    for i in range(len(x1)):
-        stock_val[x1[i]] -= y1[i]
-    #print(stock_val)
-    for i in range(1, l+1):
-        stock_val[i] += (stock_val[i] + stock_val[i-1])
-    ss = [safety_stock]*l
+def plot_stock(root):
+    x1 = len(stock_val)
 
-    #on_plot(root, x, stock_val[1:], 'plot')
-    W = Plotter(root, x, stock_val[1:], 'plot')
-    W.a.plot(x, ss)
+    y1 = stock_val[-1]
+
+    xx = range(x1, x1 + math.ceil(y1/rate))
+    yy = [line_fit(i, x1, y1, rate) for i in xx]
+
+    #print(xx)
+    #print(yy)
+
+    rol = ROL(10, safety_stock, rate)
+
+    rod = ROD(x1, y1, rol, rate)
+
+    y3 = range(math.floor(rol))
+    x3 = [rod]*len(y3)
+
+    W = Plotter(root, range(1,x1), stock_val[1:], 'step')
+    W.a.plot(range(x1), [safety_stock]*x1, 'y--')
+    W.a.plot(x3, y3, 'g--')
+    W.a.plot(xx, yy, 'r--')
 
 
 def get_tree_val(tv, x_name, y_name):
@@ -215,6 +264,9 @@ def get_tree_val(tv, x_name, y_name):
 
 def on_plot(root, x, y, type):
     W = Plotter(root, x, y, type)
+
+def on_filter():
+    return
 
 
 
@@ -271,6 +323,10 @@ def on_error(message):
     b = Button(e, text = "OK", command = e.destroy)
     b.pack(side = BOTTOM, padx = 2, pady = 2)
 
+'''
+class Message:
+    def __init__(text):
+'''
 
 class Update(object):
 
@@ -343,12 +399,14 @@ p2 = ttk.Frame(nb)
 p3 = ttk.Frame(nb)
 p4 = ttk.Frame(nb)
 p5 = ttk.Frame(nb)
+p6 = ttk.Frame(nb)
 
 nb.add(p1, text='Home')
 nb.add(p2, text='Purchase Log')
 nb.add(p3, text='Usage Log')
 nb.add(p4, text ='Seller info')
-nb.add(p5, text = 'Analysis')
+nb.add(p5, text = 'Seller analysis')
+nb.add(p6, text = 'Stock analysis')
 
 #HOME--------------------------------------------------------------------------------------------
 
@@ -563,44 +621,94 @@ for i in range(4):
     seller_rbf.columnconfigure(i, weight = 1)
 
 
-#ANALYSIS--------------------------------------------------------------------------------------------
+#SELLER ANALYSIS--------------------------------------------------------------------------------------------
 
-analysis_head = ['SELLER_ID', 'ORDERING COST', 'UNIT PRICE', 'LEAD TIME', 'QUANTITY', 'DISCOUNT', 'TOTAL COST']
+analysis_head = ['SELLER_ID', 'ORDERING COST', 'UNIT PRICE', 'LEAD TIME', 'QUANTITY', 'DISCOUNT', 'TOTAL COST', 'UNIT COST']
 
-analysis_tf = ttk.Frame(p5)
-analysis_bf = ttk.Frame(p5)
+analysis_lf = ttk.Frame(p5)
+analysis_rf = ttk.Frame(p5)
 
-analysis_tf.pack(fill='both', expand=True)
-analysis_bf.pack(side = BOTTOM)
+analysis_lf.grid(row = 0, column = 0, sticky = 'nesw')
+analysis_rf.grid(row = 0, column = 1, sticky = 'nesw')
+
+p5.rowconfigure(0, weight = 1)
+p5.columnconfigure(0, weight = 8)
+p5.columnconfigure(1, weight = 1)
 
 #TF
-seller_analysis = []
 analyze_seller()
-analysis_lb = MultiColumnListbox(analysis_tf, analysis_head, seller_analysis)
+analysis_lb = MultiColumnListbox(analysis_lf, analysis_head, seller_analysis)
 
 
 #BF
-ae4 = Entry(analysis_bf)
-al1 = Label(analysis_bf, text = 'Annual Demand')
-al2 = Label(analysis_bf, text = 'Safety Stock')
-al3 = Label(analysis_bf, text = 'Holding Cost')
-al4 = Label(analysis_bf, text = '')
-al5 = Label(analysis_bf, text = '')
+sa_l = ['Max unit cost', 'Max lead time' ,'days']
+sa_l = [Label(analysis_rf, text = x) for x in sa_l]
 
-ae1 = Entry(analysis_bf)
-ae2 = Entry(analysis_bf)
-ae3 = Entry(analysis_bf)
-ae1.grid(row = 0)
-ae2.grid(row = 0, column = 1)
-ae3.grid(row = 0, column = 2)
+sa_e = [Entry(analysis_rf) for i in range(2)]
 
-ab1 = Button(analysis_bf, text = 'filter')
-ab1.grid(row = 0,column = 3)
+bsa_filter = Button(usage_rf, text = "Filter", command = lambda : on_filter())
 
-ab2 = Button(analysis_bf, text = 'demand analysis', command = lambda : plot_demand(usage_head, root))
-ab2.grid(row = 1)
+sa_l[0].grid(row = 1, column = 1)
+sa_e[0].grid(row = 1, column = 2, columnspan = 2)
+sa_l[1].grid(row = 3, column = 1)
+sa_e[1].grid(row = 3, column = 2, columnspan = 2)
+sa_l[2].grid(row = 3, column = 4)
+#bsa_filter.grid(row = 3, column = 1)
 
-ab3 = Button(analysis_bf, text = 'stock analysis', command = lambda : plot_stock(usage_head, root))
-ab3.grid(row = 1, column = 1)
+for i in range(20):
+    analysis_rf.rowconfigure(i, weight = 1)
+for i in range(4):
+    analysis_rf.columnconfigure(i, weight = 1)
 
+
+
+
+#STOCK ANALYSIS--------------------------------------------------------------------------------------------
+u_rate(60)
+
+stock_head = ['Day', 'Stock']
+
+stock_lf = ttk.Frame(p6)
+stock_rf = ttk.Frame(p6)
+
+stock_lf.grid(row = 0, column = 0, sticky = 'nesw')
+stock_rf.grid(row = 0, column = 1, sticky = 'nesw')
+
+p6.rowconfigure(0, weight = 1)
+p6.columnconfigure(0, weight = 8)
+p6.columnconfigure(1, weight = 1)
+
+#LF
+analyze_stock(usage_head)
+stock_lb = MultiColumnListbox(stock_lf, stock_head, stock_analysis)
+
+#RF
+st_l = ['Days']
+st_l = [Label(stock_rf, text = x) for x in st_l]
+
+st_e = [Entry(stock_rf) for i in st_l]
+
+bst_stock = Button(stock_rf, text = "Stock analysis", command = lambda : plot_stock(root))
+bst_demand = Button(stock_rf, text = "Demand analysis", command = lambda: plot_demand(usage_head, root))
+
+st_l[0].grid(row = 1, column = 1)
+st_e[0].grid(row = 1, column = 2, columnspan = 2)
+bst_demand.grid(row = 3, column = 1)
+bst_stock.grid(row = 3, column = 3)
+
+for i in range(20):
+    stock_rf.rowconfigure(i, weight = 1)
+for i in range(4):
+    stock_rf.columnconfigure(i, weight = 1)
+
+
+
+
+
+
+
+
+
+
+#END
 root.mainloop()
