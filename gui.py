@@ -137,6 +137,36 @@ def analyze_stock(usage_head):
 
 #SQL FUNCTIONS------------------------------------------------------------------------------------------------
 
+def insert_to_db(table, values):
+    TEMP=''
+    if table=='seller':
+        TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['OC','UP','LT'])
+    if table == 'offer':
+        TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['Q','D'])
+    if table == 'demand':
+        TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['D','Q'])
+    if table == 'purchase':
+        TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['D','Q'])
+    cur.execute("INSERT INTO {} VALUES({}) ON DUPLICATE KEY UPDATE {}".format(table, ','.join(str(i) for i in values),TEMP))
+    db.commit()
+
+def delete_from_db_using_id(table, id):
+    cur.execute("DELETE FROM {} WHERE ID={}".format(table, id))
+    db.commit()
+
+def delete_from_db_using_values(table, values):
+    TEMP=''
+    if table=='seller':
+        TEMP = 'ID={} and OC={} and UP={} and LT={}'.format(values[0],values[1],values[2],values[3])
+    if table == 'offer':
+        TEMP = 'ID={} and Q={} and D={}'.format(values[0],values[1],values[2])
+    if table == 'demand':
+        TEMP = 'D={} and Q={}'.format(values[0],values[1])
+    if table == 'purchase':
+        TEMP = 'D={} and Q={}'.format(values[0],values[1])
+    cur.execute("DELETE FROM {} WHERE {}".format(table, TEMP))
+    db.commit()
+
 def on_b_insert(entries, mlb, flag):
     val = []
     rep = 0
@@ -145,6 +175,10 @@ def on_b_insert(entries, mlb, flag):
             for i in range(len(entries)):
                 val.append(int(entries[i].get()))
             mlb.insert(tuple(val))
+            if mlb==usage_lb:
+                insert_to_db('demand',val)
+            elif mlb==purchase_lb:
+                insert_to_db('purchase',val)
         except:
             on_error('Enter valid values')
             rep = -1
@@ -154,7 +188,6 @@ def on_b_insert(entries, mlb, flag):
     elif flag == 3:
         rep = on_offer_insert(entries)
     return rep
-
 
 def on_b_update(mlb, labels, flag):
     cur_item = mlb.tree.focus()
@@ -166,9 +199,20 @@ def on_b_update(mlb, labels, flag):
 
 def on_b_delete(mlb):
     cur_item = mlb.tree.focus()
+
     if cur_item == '':
         on_error('Select an entry')
     else:
+        val = (mlb.tree.item(cur_item)['values'])
+        if mlb == usage_lb:
+            delete_from_db_using_values('demand',val)
+        elif mlb == purchase_lb:
+            delete_from_db_using_values('purchase', val)
+        elif mlb == offer_lb:
+            delete_from_db_using_values('offer', val)
+        elif mlb == seller_lb:
+            delete_from_db_using_values('seller', val)
+
         mlb.tree.delete(cur_item)
 
 
@@ -184,6 +228,7 @@ def on_seller_insert(entries):
         v3 = float(entries[2].get())
         v4 = int(entries[3].get())
         seller_lb.insert((v1, v2, v3, v4))
+        insert_to_db('seller',[v1,v2,v3,v4])
     except:
         on_error('Enter valid values')
         return -1
@@ -197,6 +242,7 @@ def on_offer_insert(entries):
         v2 = int(entries[1].get())
         v3 = float(entries[2].get())
         offer_lb.insert((v1, v2, v3))
+        insert_to_db('offer',[v1,v2,v3])
     except:
         on_error('Enter valid values')
         return -1
