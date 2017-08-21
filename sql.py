@@ -2,7 +2,7 @@
 #run mysql and create database called co226
 
 import numpy as np
-import pymysql as MySQLdb
+import MySQLdb
 import math
 import random
 import matplotlib.pyplot as plt
@@ -64,9 +64,9 @@ cur.execute("CREATE TABLE OFFER(ID INT, Q INT, D FLOAT, FOREIGN KEY (ID) REFEREN
 
 
 seller = [
-    (1, 23000, 100),
-    (2, 21000, 101.5),
-    (3, 25000, 98.5)
+    (1, 23000, 100, 10),
+    (2, 21000, 101.5, 12),
+    (3, 25000, 98.5, 5)
 ]
 
 
@@ -96,7 +96,7 @@ offer = [
 '''
 
 for i in seller:
-    cur.execute("INSERT INTO SELLER(ID, OC, UP) VALUES({})".format(','.join(str(j) for j in i)))
+    cur.execute("INSERT INTO SELLER VALUES({})".format(','.join(str(j) for j in i)))
 
 for i in offer:
     cur.execute("INSERT INTO OFFER VALUES({})".format(','.join(str(j) for j in i)))
