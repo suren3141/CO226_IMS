@@ -138,24 +138,16 @@ def analyze_stock():
 #SQL FUNCTIONS------------------------------------------------------------------------------------------------
 
 def insert_to_db(table, values):
-
+    TEMP=''
     if table=='seller':
         TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['OC','UP','LT'])
-        cur.execute(
-            "INSERT INTO {} VALUES({}) ON DUPLICATE KEY UPDATE {}".format(table, ','.join(str(i) for i in values),
-                                                                          TEMP))
     if table == 'offer':
         TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['Q','D'])
-        print(values,TEMP)
-        cur.execute(
-            "INSERT INTO {} VALUES({}) ON DUPLICATE KEY UPDATE {}".format(table, ','.join(str(i) for i in values),
-                                                                          TEMP))
-
     if table == 'demand':
-        cur.execute("INSERT INTO {} VALUES({})".format(table, ','.join(str(i) for i in values)))
+        TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['D','Q'])
     if table == 'purchase':
-        cur.execute("INSERT INTO {} VALUES({})".format(table, ','.join(str(i) for i in values)))
-
+        TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['D','Q'])
+    cur.execute("INSERT INTO {} VALUES({}) ON DUPLICATE KEY UPDATE {}".format(table, ','.join(str(i) for i in values),TEMP))
     db.commit()
 
 def delete_from_db_using_id(table, id):
@@ -193,7 +185,6 @@ def on_b_insert(entries, mlb, flag):
             analyze_stock()
             refresh(stock_lb, stock_analysis)
         except:
-            print('1')
             on_error('Enter valid values')
             rep = -1
 
@@ -211,7 +202,6 @@ def on_b_update(mlb, labels, flag):
     else:
         val = mlb.tree.item(cur_item)['values']
         win = Update(mlb, labels, root, cur_item, val, flag)
-         # sql is updated when ok pressed. Goto update class to see it
 
 def on_b_delete(mlb, root, flag = 0):
     cur_item = mlb.tree.focus()
@@ -246,7 +236,7 @@ def on_b_delete(mlb, root, flag = 0):
             analyze_stock()
             refresh(stock_lb, stock_analysis)
             analyze_seller()
-            refresh(seller_lb, seller_analysis)
+            refresh(analysis_lb, seller_analysis)
 
             #print('1')
     return
@@ -262,7 +252,7 @@ def on_seller_insert(entries):
         insert_to_db('seller',[v1,v2,v3,v4])
         seller_lb.insert((v1, v2, v3, v4))
         analyze_seller()
-        refresh(seller_lb, seller_analysis)
+        refresh(analysis_lb, seller_analysis)
     except:
         print('2')
         on_error('Enter valid values')
@@ -273,15 +263,15 @@ def on_seller_insert(entries):
 def on_offer_insert(entries):
     # TODO: is there any possibility to ignore entering certain fields?
     try:
-        v1 = int(entries[0].get())
-        v2 = int(entries[1].get())
-        v3 = float(entries[2].get())
+        v1 = int(o_e[0].get())
+        v2 = int(o_e[1].get())
+        v3 = float(o_e[2].get())
         insert_to_db('offer',[v1,v2,v3])
         offer_lb.insert((v1, v2, v3))
         analyze_seller()
-        refresh(seller_lb, seller_analysis)
+        refresh(analysis_lb, seller_analysis)
     except:
-        print('3')
+        print('err 3')
         on_error('Enter valid values')
         return -1
     return 0
@@ -487,9 +477,9 @@ class MultiColumnListbox(object):
 
 def on_error(message):
     e = Toplevel(root)
-    l = Label(e, text = message, font=("Arial", 14)).pack()
+    l = Label(e, text = message, font=("Arial", 16)).pack()
     b = Button(e, text = "OK", command = e.destroy)
-    b.pack(side = BOTTOM, padx = 2, pady = 2)
+    b.pack(side = BOTTOM, padx = 4, pady = 4)
 
 
 class Confirm:
@@ -565,24 +555,6 @@ class Update(object):
         self.win.destroy()
 
     def on_ok(self, entries, mlb, cur_item, ind):
-        val=[]
-        for i in range(len(entries)):
-            val.append((entries[i].get()))
-        if mlb == usage_lb:
-            cur.execute("delete from DEMAND WHERE D={} AND Q={} LIMIT 1".format(
-                                                                                   self.previous_val[0],
-                                                                                   self.previous_val[1]))
-        elif mlb == purchase_lb:
-            cur.execute("DELETE FROM purchase WHERE D={} AND Q={} LIMIT 1".format(
-                                                                                   self.previous_val[0],
-                                                                                   self.previous_val[1]))
-        elif mlb == offer_lb:
-            print(val)
-            insert_to_db('offer', val)
-        elif mlb == seller_lb:
-            print(val)
-            insert_to_db('seller',val)
-
         reply = on_b_insert(entries, mlb, ind)
         if reply == 0:
             mlb.tree.delete(cur_item)
