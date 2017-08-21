@@ -32,6 +32,8 @@ def EOQ(d, h, o):
 
 def ROL(lead , SS, rate):
     # Reorder level. Level at which order should be made in order to avoid stock out
+    if lead is None:
+        lead = 0
     return lead*rate + SS
 
 def ROD(x1, y1, rol, rate):
@@ -140,16 +142,11 @@ def analyze_stock():
 def insert_to_db(table, values):
 
     if table=='seller':
-        TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['OC','UP','LT'])
-        cur.execute(
-            "INSERT INTO {} VALUES({}) ON DUPLICATE KEY UPDATE {}".format(table, ','.join(str(i) for i in values),
-                                                                          TEMP))
+        #TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['OC','UP','LT'])
+        cur.execute("INSERT INTO {} VALUES({})".format(table, ','.join(str(i) for i in values)))
     if table == 'offer':
-        TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['Q','D'])
-        print(values,TEMP)
-        cur.execute(
-            "INSERT INTO {} VALUES({}) ON DUPLICATE KEY UPDATE {}".format(table, ','.join(str(i) for i in values),
-                                                                          TEMP))
+        #TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['Q','D'])
+        cur.execute("INSERT INTO {} VALUES({})".format(table, ','.join(str(i) for i in values)))
 
     if table == 'demand':
         cur.execute("INSERT INTO {} VALUES({})".format(table, ','.join(str(i) for i in values)))
@@ -261,9 +258,8 @@ def on_seller_insert(entries):
         seller_lb.insert((v1, v2, v3, v4))
         analyze_seller()
         refresh(analysis_lb, seller_analysis)
-    except:
-        print('2')
-        on_error('Enter valid values')
+    except Exception as e:
+        on_error(str(e))
         return -1
     return 0
 
@@ -271,16 +267,15 @@ def on_seller_insert(entries):
 def on_offer_insert(entries):
     # TODO: is there any possibility to ignore entering certain fields?
     try:
-        v1 = int(o_e[0].get())
-        v2 = int(o_e[1].get())
-        v3 = float(o_e[2].get())
+        v1 = int(entries[0].get())
+        v2 = int(entries[1].get())
+        v3 = float(entries[2].get())
         insert_to_db('offer',[v1,v2,v3])
         offer_lb.insert((v1, v2, v3))
         analyze_seller()
         refresh(analysis_lb, seller_analysis)
-    except:
-        print('err 3')
-        on_error('Enter valid values')
+    except Exception as e:
+        on_error(str(e))
         return -1
     return 0
 
@@ -576,11 +571,12 @@ class Update(object):
                                                                                    self.previous_val[0],
                                                                                    self.previous_val[1]))
         elif mlb == offer_lb:
-            print(val)
-            insert_to_db('offer', val)
+            print(entries[0].get(), entries[1].get(),entries[2].get())
+            cur.execute("DELETE FROM OFFER WHERE ID={} AND D={} AND Q={} LIMIT 1".format(self.previous_val[0],
+                                                                                        self.previous_val[1],
+                                                                                         self.previous_val[2]))
         elif mlb == seller_lb:
-            print(val)
-            insert_to_db('seller',val)
+            cur.execute("DELETE FROM SELLER WHERE ID={}".format(entries[0].get()))
 
         reply = on_b_insert(entries, mlb, ind)
         if reply == 0:
