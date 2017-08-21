@@ -134,7 +134,7 @@ def analyze_stock():
     global current_stock
     current_stock= stock_val[-1]
     if current_stock < rol:
-        on_error("Attenion! Order now to avoid Stock out")
+        err(["Attenion! Order now to avoid Stock out"])
     #return stock_val
 
 #SQL FUNCTIONS------------------------------------------------------------------------------------------------
@@ -189,7 +189,7 @@ def on_b_insert(entries, mlb, flag):
             analyze_stock()
             refresh(stock_lb, stock_analysis)
         except Exception as e:
-            on_error('Enter valid values')
+            err(['Enter valid values'])
             print(str(e))
             rep = -1
 
@@ -203,7 +203,7 @@ def on_b_insert(entries, mlb, flag):
 def on_b_update(mlb, labels, flag):
     cur_item = mlb.tree.focus()
     if cur_item == '':
-        on_error('Select an entry')
+        err(['Select an entry'])
     else:
         val = mlb.tree.item(cur_item)['values']
         win = Update(mlb, labels, root, cur_item, val, flag)
@@ -212,7 +212,7 @@ def on_b_update(mlb, labels, flag):
 def on_b_delete(mlb, root, flag = 0):
     cur_item = mlb.tree.focus()
     if cur_item == '':
-        on_error('Select an entry')
+        err(['Select an entry'])
     else:
         w = Confirm("Do you want to delete this entry and all other related entries", root)
         root.wait_window(w.win)
@@ -260,7 +260,7 @@ def on_seller_insert(entries):
         analyze_seller()
         refresh(analysis_lb, seller_analysis)
     except Exception as e:
-        on_error("Enter valid values")
+        err(["Enter valid values"])
         print(str(e))
         return -1
     return 0
@@ -277,7 +277,7 @@ def on_offer_insert(entries):
         analyze_seller()
         refresh(analysis_lb, seller_analysis)
     except Exception as e:
-        on_error('Enter valid values')
+        err(['Enter valid values'])
         print(str(e))
         return -1
     return 0
@@ -415,7 +415,7 @@ def on_filter():
 def on_choice():
     cur_item = analysis_lb.tree.focus()
     if cur_item == '':
-        on_error('Select an entry')
+        err('Select an entry')
     val = analysis_lb.tree.item(cur_item)['values']
     make_choice(val)
     h_l1[-1].config(text = str(lt_choice))
@@ -449,9 +449,9 @@ class MultiColumnListbox(object):
         vsb = ttk.Scrollbar(orient="vertical", command=self.tree.yview)         #Create VSB
         hsb = ttk.Scrollbar(orient="horizontal", command=self.tree.xview)       #Create HSB
         self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)     #Configure tree
-        self.tree.grid(column=0, row=0, sticky='nsew', in_=frame)           #Pack
-        vsb.grid(column=1, row=0, sticky='ns', in_=frame)                   #Pack
-        hsb.grid(column=0, row=1, sticky='ew', in_=frame)                   #Pack
+        self.tree.grid(column=0, row=0, sticky='nsew', in_=frame)               #Pack
+        vsb.grid(column=1, row=0, sticky='ns', in_=frame)                       #Pack
+        hsb.grid(column=0, row=1, sticky='ew', in_=frame)                       #Pack
         frame.grid_columnconfigure(0, weight=1)
         frame.grid_rowconfigure(0, weight=1)
 
@@ -481,12 +481,18 @@ class MultiColumnListbox(object):
         tree.heading(col, command=lambda col=col: self.sort_col(tree, col, int(not descending)))
 
 
-def on_error(message):
-    e = Toplevel(root)
-    l = Label(e, text = message, font=("Arial", 16)).pack()
-    b = Button(e, text = "OK", command = e.destroy)
-    b.pack(side = BOTTOM, padx = 4, pady = 4)
+class err:
 
+    def __init__(message):
+        e = Toplevel(root)
+        l = [Label(e, text = x, font=("Arial", 16)) for x in message]
+        for i in range(len(l)):
+            l[i].grid(row = i, column = 0, padx = 2, pady = 2)
+        b = Button(e, text = "OK", command = e.destroy)
+        b.grid(row = len(l)+1, column = 0, padx = 2, pady = 2)
+        for i in range(len(l)+1):
+            e.rowconfigure(i, weight = 1)
+        e.columnconfigure(0, weight = 1)
 
 class Confirm:
 
@@ -603,7 +609,10 @@ root.geometry('800x500')
 
 #NB--------------------------------------------------------------------------------------------
 nb = ttk.Notebook(root)
-nb.pack(fill='both', expand='yes')
+#nb.pack(fill='both', expand='yes')
+np.grid(row = 0, column = 0,sticky = 'NEWS')
+root.rowconfigure(0, weight = 1)
+root.columnconfigure(0, weight = 1)
 
 p1 = ttk.Frame(nb)
 p2 = ttk.Frame(nb)
