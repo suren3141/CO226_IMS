@@ -8,7 +8,7 @@ from matplot import Plotter
 
 #GLOBAL VARIABLES-------------------------------------------------------------------------------------
 demand = 0
-holding_cost = 30
+holding_cost = 300
 safety_stock = 0
 max_lead_time = (-1)
 max_unit_cost = float(-1)
@@ -188,8 +188,9 @@ def on_b_insert(entries, mlb, flag):
             mlb.insert(tuple(val))
             analyze_stock()
             refresh(stock_lb, stock_analysis)
-        except:
+        except Exception as e:
             on_error('Enter valid values')
+            print(str(e))
             rep = -1
 
     elif flag == 2:
@@ -259,7 +260,8 @@ def on_seller_insert(entries):
         analyze_seller()
         refresh(analysis_lb, seller_analysis)
     except Exception as e:
-        on_error(str(e))
+        on_error("Enter valid values")
+        print(str(e))
         return -1
     return 0
 
@@ -275,7 +277,8 @@ def on_offer_insert(entries):
         analyze_seller()
         refresh(analysis_lb, seller_analysis)
     except Exception as e:
-        on_error(str(e))
+        on_error('Enter valid values')
+        print(str(e))
         return -1
     return 0
 
