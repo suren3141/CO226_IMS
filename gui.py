@@ -526,6 +526,7 @@ class Update(object):
     def __init__(self, mlb, labels, root, cur_item, val, ind):
         self.win = Toplevel(root)
         self.setup_win(mlb, labels, cur_item, val, ind)
+        self.previous_val = val
 
     def setup_win(self, mlb, lab, cur_item, val, ind):
         #print(val)
