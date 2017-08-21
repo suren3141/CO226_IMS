@@ -138,16 +138,24 @@ def analyze_stock():
 #SQL FUNCTIONS------------------------------------------------------------------------------------------------
 
 def insert_to_db(table, values):
-    TEMP=''
+
     if table=='seller':
         TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['OC','UP','LT'])
+        cur.execute(
+            "INSERT INTO {} VALUES({}) ON DUPLICATE KEY UPDATE {}".format(table, ','.join(str(i) for i in values),
+                                                                          TEMP))
     if table == 'offer':
         TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['Q','D'])
+        print(values,TEMP)
+        cur.execute(
+            "INSERT INTO {} VALUES({}) ON DUPLICATE KEY UPDATE {}".format(table, ','.join(str(i) for i in values),
+                                                                          TEMP))
+
     if table == 'demand':
-        TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['D','Q'])
+        cur.execute("INSERT INTO {} VALUES({})".format(table, ','.join(str(i) for i in values)))
     if table == 'purchase':
-        TEMP = ','.join(i + '=VALUES(' + i + ')' for i in ['D','Q'])
-    cur.execute("INSERT INTO {} VALUES({}) ON DUPLICATE KEY UPDATE {}".format(table, ','.join(str(i) for i in values),TEMP))
+        cur.execute("INSERT INTO {} VALUES({})".format(table, ','.join(str(i) for i in values)))
+
     db.commit()
 
 def delete_from_db_using_id(table, id):
@@ -203,6 +211,7 @@ def on_b_update(mlb, labels, flag):
     else:
         val = mlb.tree.item(cur_item)['values']
         win = Update(mlb, labels, root, cur_item, val, flag)
+         # sql is updated when ok pressed. Goto update class to see it
 
 def on_b_delete(mlb, root, flag = 0):
     cur_item = mlb.tree.focus()
@@ -556,6 +565,24 @@ class Update(object):
         self.win.destroy()
 
     def on_ok(self, entries, mlb, cur_item, ind):
+        val=[]
+        for i in range(len(entries)):
+            val.append((entries[i].get()))
+        if mlb == usage_lb:
+            cur.execute("delete from DEMAND WHERE D={} AND Q={} LIMIT 1".format(
+                                                                                   self.previous_val[0],
+                                                                                   self.previous_val[1]))
+        elif mlb == purchase_lb:
+            cur.execute("DELETE FROM purchase WHERE D={} AND Q={} LIMIT 1".format(
+                                                                                   self.previous_val[0],
+                                                                                   self.previous_val[1]))
+        elif mlb == offer_lb:
+            print(val)
+            insert_to_db('offer', val)
+        elif mlb == seller_lb:
+            print(val)
+            insert_to_db('seller',val)
+
         reply = on_b_insert(entries, mlb, ind)
         if reply == 0:
             mlb.tree.delete(cur_item)
@@ -762,7 +789,7 @@ o_l = [Label(seller_rbf, text = x) for x in o_l]
 
 o_e = [Entry(seller_rbf) for i in range(3)]
 
-bo_insert = Button(seller_rbf, text = "INSERT", command = lambda : on_b_insert(s_e, offer_lb, 3))
+bo_insert = Button(seller_rbf, text = "INSERT", command = lambda : on_b_insert(o_e, offer_lb, 3))
 ttk.Separator(seller_rbf,orient=HORIZONTAL).grid(row=5, columnspan = 4,sticky = 'ew')
 bo_update = Button(seller_rbf, text = "EDIT", command = lambda: on_b_update(offer_lb, offer_head, 3))
 bo_delete = Button(seller_rbf, text = "DELETE", command = lambda : on_b_delete(offer_lb, root))
