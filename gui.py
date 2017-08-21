@@ -5,6 +5,13 @@ import pymysql as MySQLdb
 import math
 from matplot import Plotter
 
+#SQL------------------------------------------------------------------------------------------
+db = MySQLdb.connect(host="localhost",    # your host, usually localhost
+                     user="root",         # your username
+                                          # your password
+                     db="co226")    # name of the data base
+
+cur = db.cursor()
 
 #GLOBAL VARIABLES-------------------------------------------------------------------------------------
 demand = 0
@@ -415,7 +422,7 @@ def on_filter():
 def on_choice():
     cur_item = analysis_lb.tree.focus()
     if cur_item == '':
-        err('Select an entry')
+        err(['Select an entry'])
     val = analysis_lb.tree.item(cur_item)['values']
     make_choice(val)
     h_l1[-1].config(text = str(lt_choice))
@@ -482,10 +489,10 @@ class MultiColumnListbox(object):
 
 
 class err:
-
-    def __init__(message):
+    
+    def __init__(self, message):
         e = Toplevel(root)
-        l = [Label(e, text = x, font=("Arial", 16)) for x in message]
+        l = [Label(e, text = x) for x in message]
         for i in range(len(l)):
             l[i].grid(row = i, column = 0, padx = 2, pady = 2)
         b = Button(e, text = "OK", command = e.destroy)
@@ -533,36 +540,32 @@ class Update(object):
         self.previous_val = val
 
     def setup_win(self, mlb, lab, cur_item, val, ind):
-        #print(val)
         l = len(lab)
 
-        tf = Frame(self.win)
-        bf = Frame(self.win)
-        tf.pack()
-        bf.pack(side = BOTTOM)
+        f = Frame(self.win)
+        f.grid(sticky = 'NESW')
 
         entries = []
         labels = []
 
-        #TF
         for i in range(l):
-            entries.append(Entry(self.win))
-            labels.append(Label(self.win, text = lab[i]))
-            labels[i].pack(side = LEFT)
-            entries[i].pack()
-            #labels[i].grid(row = 0, column = i)
-            #entries[i].grid(row = 1, column = i)
+            entries.append(Entry(f))
+            labels.append(Label(f, text = lab[i]))
+            labels[i].grid(row = 1, column = i+1)
+            entries[i].grid(row = 2, column = i+1)
             entries[i].insert(0, str(val[i]))
-            #tf.columnconfigure(i, weight = 1)
-        #tf.rowconfigure(0, weight = 1)
-        #tf.rowconfigure(1, weight = 1)
 
-        #BF
-        b_ok = Button(bf, text = "OK", command = lambda : self.on_ok(entries, mlb, cur_item, ind))
-        b_ok.pack()
+        b_ok = Button(f, text = "OK", command = lambda : self.on_ok(entries, mlb, cur_item, ind))
+        b_ok.grid(row = 4, column = int(l/2))
 
-        b_cancel = Button(bf, text = "CANCEL", command = self.on_cancel)
-        b_cancel.pack()
+        b_cancel = Button(f, text = "CANCEL", command = self.on_cancel)
+        b_cancel.grid(row = 4, column = int(l/2+1))
+
+        for i in range(l+2):
+            f.columnconfigure(i, weight = 1)
+
+        for i in range(5):
+            f.rowconfigure(i, weight = 1)
 
     def on_cancel(self):
         self.win.destroy()
@@ -572,7 +575,7 @@ class Update(object):
         for i in range(len(entries)):
             val.append((entries[i].get()))
         if mlb == usage_lb:
-            cur.execute("delete from DEMAND WHERE D={} AND Q={} LIMIT 1".format(
+            cur.execute("DELETE FROM DEMAND WHERE D={} AND Q={} LIMIT 1".format(
                                                                                    self.previous_val[0],
                                                                                    self.previous_val[1]))
         elif mlb == purchase_lb:
@@ -593,14 +596,6 @@ class Update(object):
             self.win.destroy()
 
 
-#SQL------------------------------------------------------------------------------------------
-db = MySQLdb.connect(host="localhost",    # your host, usually localhost
-                     user="root",         # your username
-                                          # your password
-                     db="co226")    # name of the data base
-
-cur = db.cursor()
-
 #GUI-------------------------------------------------------------------------------------------
 root = Tk()
 root.title('IMS')
@@ -610,7 +605,7 @@ root.geometry('800x500')
 #NB--------------------------------------------------------------------------------------------
 nb = ttk.Notebook(root)
 #nb.pack(fill='both', expand='yes')
-np.grid(row = 0, column = 0,sticky = 'NEWS')
+nb.grid(row = 0, column = 0,sticky = 'NEWS')
 root.rowconfigure(0, weight = 1)
 root.columnconfigure(0, weight = 1)
 
