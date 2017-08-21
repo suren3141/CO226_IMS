@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 db = MySQLdb.connect(host="localhost",    # your host, usually localhost
                      user="root",         # your username
-                                          # your password
+                     password="pass",                     # your password
                      db="co226")    # name of the data base
 
 # you must create a Cursor object. It will let
